@@ -10,6 +10,8 @@ const PhonebookApp = () => {
     const [newName, setNewName] = useState('')
     const [newNumber, setNewNumber] = useState('')
     const [filterBy, setFilterBy] = useState('')
+    const [headerMessage, setHeaderMessage] = useState(null)
+    const [isErrorMessage, setIsErrorMessage] = useState(false)
 
     const hook = () => {
 
@@ -40,22 +42,21 @@ const PhonebookApp = () => {
 
     const updateNumber = (name, newNumber) => {
 
-            const person = persons.find(p => p.name === name)
-            const changedPerson = {...person, number: newNumber}
-            phoneService
-                .update(person.id, changedPerson)
-                .then(returnedPerson => {
-                    
-                    setPersons(persons.map(p => p.id !== person.id ? p : returnedPerson))
-                    setNewNumber('')
+        const person = persons.find(p => p.name === name)
+        const changedPerson = { ...person, number: newNumber }
+        phoneService
+            .update(person.id, changedPerson)
+            .then(returnedPerson => {
 
-                }).catch(error => {
+                setPersons(persons.map(p => p.id !== person.id ? p : returnedPerson))
+                setNewNumber('')
 
-                    alert(
-                        'uh this probably should not happen'
-                    )
+            }).catch(error => {
 
-                })
+                infoHeader(`${name} was already deleted from the server`, true)
+                setPersons(persons.filter(p => p.name !== name))
+
+            })
 
     }
 
@@ -68,7 +69,7 @@ const PhonebookApp = () => {
         if (persons.some(p => p.name === newName)) {
             window.confirm(`${newName} is already added to the phonebook, replace the older number with a new one?`
                 , updateNumber(newName, newNumber))
-            setNewName('')
+            infoHeader(`Updated ${newName}'s number`, false)
         }
         else {
 
@@ -77,9 +78,20 @@ const PhonebookApp = () => {
                 .then(returnedPerson => {
                     setPersons(persons.concat(returnedPerson))
                 })
-            setNewName('')
-            setNewNumber('')
+            infoHeader(`Added ${newName}`, false)
         }
+
+    }
+
+    const infoHeader = (text, isError) => {
+
+        setIsErrorMessage(isError)
+        setHeaderMessage(text)
+        setNewName('')
+        setNewNumber('')
+        setTimeout(() => {
+            setHeaderMessage(null)
+        }, 5000)
 
     }
 
@@ -99,6 +111,8 @@ const PhonebookApp = () => {
     return (
         <div>
             <h2>Phonebook</h2>
+
+            <Notification message={headerMessage} isError={isErrorMessage} />
             <Filter filterBy={filterBy} filterFunc={handleFilterChange} />
             <h3>add a new</h3>
             <PersonForm
@@ -117,7 +131,39 @@ const PhonebookApp = () => {
 }
 
 
+const Notification = ({ message, isError }) => {
 
+    let errorStyle = {
+
+        color: 'red',
+        background: 'lightgrey',
+        fontSize: 20,
+        borderStyle: 'solid',
+        borderRadius: 5,
+        padding: 10,
+        marginBottom: 10,
+        width: 400
+
+
+    }
+
+    if (message === null) {
+        return null
+    }
+
+    if (!isError) {
+
+        errorStyle = { ...errorStyle, color: 'green' }
+        //errorStyle.color = 'green'
+    }
+
+    return (
+        <div style={errorStyle}>
+            {message}
+        </div>
+    )
+
+}
 
 const Person = ({ person, deleteFunc }) => {
     return (
@@ -131,13 +177,20 @@ const Person = ({ person, deleteFunc }) => {
 }
 
 const Persons = ({ persons, filterBy, deleteFunc }) => {
+
+    const del = (name, id) => {
+
+        if(window.confirm(`Are you sure you want to delete ${name}?`)) {deleteFunc(id)}
+
+    }
+
     return (
         <div>
             {persons.filter(person => person.name.toLowerCase().includes(
                 filterBy.toLowerCase()))
                 .map((person) =>
                     <Person key={person.name} person={person} deleteFunc={
-                        () => window.confirm(`Are you sure you want to delete ${person.name}?`, deleteFunc(person.id))
+                        () => del(person.name, person.id)
                     } />
                 )}
 
